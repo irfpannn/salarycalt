@@ -86,6 +86,23 @@ const allocations = computed(() => {
 
 // Dark mode removed; app is dark by default
 
+// Mobile-friendly numeric input filters
+function filterIntInput(e: Event) {
+  const t = e.target as HTMLInputElement
+  if (!t) return
+  const cleaned = (t.value || '').replace(/[^0-9]/g, '')
+  if (t.value !== cleaned) t.value = cleaned
+}
+
+function filterDecimalInput(e: Event) {
+  const t = e.target as HTMLInputElement
+  if (!t) return
+  let v = (t.value || '').replace(/[^0-9.]/g, '')
+  // allow only one dot
+  v = v.replace(/(\..*)\./g, '$1')
+  if (t.value !== v) t.value = v
+}
+
 function resetForm() {
   Object.assign(form, getDefaultForm())
   showAdvanced.value = false
@@ -130,11 +147,12 @@ async function sharePlan() {
           <div class="grid gap-1">
             <Label class="text-sm text-muted-foreground">Gross salary (before EPF/SOCSO/EIS)</Label>
             <Input
-              inputmode="decimal"
-              type="number"
-              min="0"
-              step="50"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
               v-model.number="form.salary"
+              @input="filterIntInput"
               class="text-base h-12"
               placeholder="e.g. 5000"
             />
@@ -151,22 +169,24 @@ async function sharePlan() {
             <div class="grid gap-1">
               <Label class="text-sm text-muted-foreground">EPF rate (%)</Label>
               <Input
-                type="number"
-                min="0"
-                max="100"
-                step="0.5"
+                type="text"
+                inputmode="decimal"
+                pattern="[0-9]*[.]?[0-9]*"
+                autocomplete="off"
                 v-model.number="form.epfRate"
+                @input="filterDecimalInput"
                 class="h-12"
               />
             </div>
             <div class="grid gap-1">
               <Label class="text-sm text-muted-foreground">SOCSO rate (%)</Label>
               <Input
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
+                type="text"
+                inputmode="decimal"
+                pattern="[0-9]*[.]?[0-9]*"
+                autocomplete="off"
                 v-model.number="form.socsoRate"
+                @input="filterDecimalInput"
                 class="h-12"
               />
               <span class="mt-1 block text-xs text-muted-foreground"
@@ -176,21 +196,24 @@ async function sharePlan() {
             <div class="grid gap-1">
               <Label class="text-sm text-muted-foreground">SOCSO wage ceiling (RM)</Label>
               <Input
-                type="number"
-                min="0"
-                step="50"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="off"
                 v-model.number="form.socsoCeiling"
+                @input="filterIntInput"
                 class="h-12"
               />
             </div>
             <div class="grid gap-1">
               <Label class="text-sm text-muted-foreground">EIS rate (%)</Label>
               <Input
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
+                type="text"
+                inputmode="decimal"
+                pattern="[0-9]*[.]?[0-9]*"
+                autocomplete="off"
                 v-model.number="form.eisRate"
+                @input="filterDecimalInput"
                 class="h-12"
               />
               <span class="mt-1 block text-xs text-muted-foreground"
@@ -200,10 +223,12 @@ async function sharePlan() {
             <div class="grid gap-1">
               <Label class="text-sm text-muted-foreground">EIS wage ceiling (RM)</Label>
               <Input
-                type="number"
-                min="0"
-                step="50"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="off"
                 v-model.number="form.eisCeiling"
+                @input="filterIntInput"
                 class="h-12"
               />
             </div>
@@ -270,23 +295,58 @@ async function sharePlan() {
         <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div class="grid gap-1">
             <Label class="text-sm text-muted-foreground">Housing / Rent</Label>
-            <Input type="number" min="0" step="10" v-model.number="form.house" />
+            <Input
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
+              v-model.number="form.house"
+              @input="filterIntInput"
+            />
           </div>
           <div class="grid gap-1">
             <Label class="text-sm text-muted-foreground">Car / Transport</Label>
-            <Input type="number" min="0" step="10" v-model.number="form.car" />
+            <Input
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
+              v-model.number="form.car"
+              @input="filterIntInput"
+            />
           </div>
           <div class="grid gap-1">
             <Label class="text-sm text-muted-foreground">Food & Groceries</Label>
-            <Input type="number" min="0" step="10" v-model.number="form.food" />
+            <Input
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
+              v-model.number="form.food"
+              @input="filterIntInput"
+            />
           </div>
           <div class="grid gap-1">
             <Label class="text-sm text-muted-foreground">Utilities & Bills</Label>
-            <Input type="number" min="0" step="10" v-model.number="form.utilities" />
+            <Input
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
+              v-model.number="form.utilities"
+              @input="filterIntInput"
+            />
           </div>
           <div class="grid gap-1 sm:col-span-2">
             <Label class="text-sm text-muted-foreground">Other necessities</Label>
-            <Input type="number" min="0" step="10" v-model.number="form.otherNecessities" />
+            <Input
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
+              v-model.number="form.otherNecessities"
+              @input="filterIntInput"
+            />
           </div>
         </div>
       </CardContent>
@@ -303,7 +363,9 @@ async function sharePlan() {
         <div class="mt-3 grid grid-cols-3 gap-2">
           <Card class="bg-emerald-500/10 border-emerald-500/40 w-full max-h-[90px] min-w-0">
             <CardContent class="px-2">
-              <div class="text-xs text-emerald-300 truncate">Needs ({{ chosenFormula.needs }}%)</div>
+              <div class="text-xs text-emerald-300 truncate">
+                Needs ({{ chosenFormula.needs }}%)
+              </div>
               <div class="mt-1 text-sm sm:text-lg font-medium text-emerald-200 truncate">
                 {{ formatMYR(allocations.needsAmount) }}
               </div>
@@ -319,7 +381,9 @@ async function sharePlan() {
           </Card>
           <Card class="bg-sky-500/10 border-sky-500/40 w-full max-h-[90px] min-w-0">
             <CardContent class="px-2">
-              <div class="text-xs text-sky-300 truncate">Savings ({{ chosenFormula.savings }}%)</div>
+              <div class="text-xs text-sky-300 truncate">
+                Savings ({{ chosenFormula.savings }}%)
+              </div>
               <div class="mt-1 text-sm sm:text-lg font-medium text-sky-200 truncate">
                 {{ formatMYR(allocations.savingsAmount) }}
               </div>
