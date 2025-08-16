@@ -404,7 +404,7 @@ async function sharePlan() {
 
   <!-- Bottom action bar -->
   <nav
-    class="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-primary/95 text-primary-foreground backdrop-blur supports-[backdrop-filter]:bg-primary/85"
+    class="fixed inset-x-0 bottom-0 pb-3 z-50 border-t border-border bg-primary/95 text-primary-foreground backdrop-blur supports-[backdrop-filter]:bg-primary/85"
   >
     <div class="mx-auto w-full max-w-md px-4 py-3 flex items-center gap-3">
       <Button variant="outline" class="w-1/2" @click="resetForm">Reset</Button>
