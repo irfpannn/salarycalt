@@ -9,10 +9,10 @@ import SalaryCalculator from './components/SalaryCalculator.vue'
       <!-- Paint the status bar area (notch) with the same color -->
       <div
         class="pointer-events-none fixed left-0 right-0 top-0 bg-primary"
-        style="height: env(safe-area-inset-top);"
+        style="height: env(safe-area-inset-top)"
         aria-hidden="true"
       />
-      <div class="mx-auto w-full max-w-md px-4 py-3" style="padding-top: env(safe-area-inset-top);">
+      <div class="mx-auto w-full max-w-md px-4 py-3" style="padding-top: env(safe-area-inset-top)">
         <h1 class="text-lg font-semibold text-center">Salary Planner/Calculator</h1>
       </div>
     </header>

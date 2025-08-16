@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { formatMYR, toPct } from '../lib/utils'
+import {
+  buildAnnualChargeableIncome,
+  estimateMonthlyTaxFromAnnualChargeable,
+} from '@/lib/malaysiaTax'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,6 +34,10 @@ function getDefaultForm() {
     socsoCeiling: 6000, // RM wage ceiling applied to rate (approx; configurable)
     eisRate: 0.2, // % Employment Insurance System
     eisCeiling: 6000, // RM wage ceiling
+    includeIncomeTax: false,
+    autoAnnualReliefs: true, // auto-calc reliefs from salary by default
+    annualReliefs: 9000, // base personal relief; will be updated when auto is on
+    applyRebate: true, // apply resident rebate when annual chargeable ≤ 35k
     // Necessities (monthly)
     house: 0,
     car: 0,
@@ -46,7 +54,103 @@ const epf = computed(() => gross.value * (form.epfRate / 100))
 const socso = computed(() => Math.min(gross.value, form.socsoCeiling) * (form.socsoRate / 100))
 const eis = computed(() => Math.min(gross.value, form.eisCeiling) * (form.eisRate / 100))
 const totalDeductions = computed(() => epf.value + socso.value + eis.value)
-const net = computed(() => Math.max(0, gross.value - totalDeductions.value))
+
+// Suggested annual reliefs from salary-linked items + personal relief caps (planner estimate):
+// - Personal relief RM9,000
+// - EPF: cap RM7,000
+// - SOCSO + EIS: cap RM350
+const suggestedAnnualReliefs = computed(() => {
+  const personal = 9000
+  const epfAnnual = epf.value * 12
+  const socsoEisAnnual = (socso.value + eis.value) * 12
+  const cappedEPF = Math.min(epfAnnual, 7000)
+  const cappedSocsoEis = Math.min(socsoEisAnnual, 350)
+  return personal + cappedEPF + cappedSocsoEis
+})
+
+// Optional user-entered additional reliefs (with planner caps)
+const relief = reactive({
+  educationFees: 0, // cap 7,000
+  medicalExpenses: 0, // cap 10,000
+  lifestyle: 0, // cap 2,500
+  lifestyleSports: 0, // cap 1,000
+  childcareFees: 0, // cap 3,000
+  prsprs: 0, // PRS/Deferred annuity cap 3,000
+  insuranceMedical: 0, // cap 3,000
+  sspn: 0, // cap 8,000
+  evCharging: 0, // cap 2,500
+  lifeInsurance: 0, // life portion cap 3,000
+})
+
+const additionalReliefsSum = computed(() => {
+  const caps = {
+    educationFees: 7000,
+    medicalExpenses: 10000,
+    lifestyle: 2500,
+    lifestyleSports: 1000,
+    childcareFees: 3000,
+    prsprs: 3000,
+    insuranceMedical: 3000,
+    sspn: 8000,
+    evCharging: 2500,
+    lifeInsurance: 3000,
+  } as const
+  let sum = 0
+  for (const k in caps) {
+    const key = k as keyof typeof caps
+    const v = Math.max(0, Number((relief as any)[key]) || 0)
+    sum += Math.min(v, caps[key])
+  }
+  return sum
+})
+
+// Keep the reliefs input reactive when auto mode is enabled
+watch(
+  [
+    () => form.autoAnnualReliefs,
+    () => gross.value,
+    () => epf.value,
+    () => socso.value,
+    () => eis.value,
+    () => additionalReliefsSum.value,
+  ],
+  () => {
+    if (form.autoAnnualReliefs) {
+      form.annualReliefs = Math.round(suggestedAnnualReliefs.value + additionalReliefsSum.value)
+    }
+  },
+  { immediate: true },
+)
+const monthlyIncomeTax = computed(() => {
+  if (!form.includeIncomeTax) return 0
+  const chargeable = form.autoAnnualReliefs
+    ? buildAnnualChargeableIncome(gross.value, form.annualReliefs)
+    : buildAnnualChargeableIncome(gross.value, form.annualReliefs, {
+        epfMonthly: epf.value,
+        socsoMonthly: socso.value,
+        eisMonthly: eis.value,
+      })
+  return estimateMonthlyTaxFromAnnualChargeable(chargeable, { applySelfRebate: form.applyRebate })
+})
+const annualChargeable = computed(() =>
+  form.includeIncomeTax
+    ? form.autoAnnualReliefs
+      ? buildAnnualChargeableIncome(gross.value, form.annualReliefs)
+      : buildAnnualChargeableIncome(gross.value, form.annualReliefs, {
+          epfMonthly: epf.value,
+          socsoMonthly: socso.value,
+          eisMonthly: eis.value,
+        })
+    : 0,
+)
+const annualTax = computed(() => (form.includeIncomeTax ? monthlyIncomeTax.value * 12 : 0))
+const totalDeductionsWithTax = computed(() => totalDeductions.value + monthlyIncomeTax.value)
+const net = computed(() => Math.max(0, gross.value - totalDeductionsWithTax.value))
+
+const effectiveTaxPct = computed(() => {
+  if (!form.includeIncomeTax || gross.value <= 0) return 0
+  return (monthlyIncomeTax.value / gross.value) * 100
+})
 
 const necessities = computed(() =>
   ['house', 'car', 'food', 'utilities', 'otherNecessities']
@@ -236,6 +340,185 @@ async function sharePlan() {
               Note: Rates and ceilings are approximate defaults. For official figures, refer to EPF
               (KWSP), PERKESO (SOCSO), and EIS guidance.
             </p>
+            <Separator class="sm:col-span-2" />
+            <div class="grid gap-1 sm:col-span-2">
+              <div class="flex items-center justify-between">
+                <Label class="text-sm text-muted-foreground"
+                  >Include estimated income tax (MTD/PCB)</Label
+                >
+                <input
+                  type="checkbox"
+                  v-model="form.includeIncomeTax"
+                  class="h-4 w-4 accent-emerald-500"
+                />
+              </div>
+              <div class="grid gap-1" v-if="form.includeIncomeTax">
+                <div class="flex items-center justify-between gap-2">
+                  <Label class="text-sm text-muted-foreground">Annual tax reliefs (RM)</Label>
+                  <label class="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      v-model="form.autoAnnualReliefs"
+                      class="h-3.5 w-3.5 accent-emerald-500"
+                    />
+                    Auto (base {{ suggestedAnnualReliefs.toLocaleString('en-MY') }} + additional
+                    {{ additionalReliefsSum.toLocaleString('en-MY') }})
+                  </label>
+                </div>
+                <Input
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  autocomplete="off"
+                  v-model.number="form.annualReliefs"
+                  @input="filterIntInput"
+                  class="h-12"
+                />
+                <span class="mt-1 block text-xs text-muted-foreground">
+                  Auto includes personal (RM9,000), EPF capped at RM7,000, and SOCSO+EIS capped at
+                  RM350; plus any additional reliefs you enter below.
+                </span>
+                <div class="mt-2 flex items-center justify-between text-xs">
+                  <label class="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      v-model="form.applyRebate"
+                      class="h-3.5 w-3.5 accent-emerald-500"
+                    />
+                    Apply resident rebate when annual chargeable ≤ RM35,000
+                  </label>
+                </div>
+
+                <details class="mt-2 rounded border border-border/50 p-2 open:bg-secondary/20">
+                  <summary class="cursor-pointer text-xs text-foreground">
+                    Relief breakdown (optional)
+                  </summary>
+                  <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div class="grid gap-1">
+                      <Label class="text-xs text-muted-foreground"
+                        >Education fees (cap 7,000)</Label
+                      >
+                      <Input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        v-model.number="relief.educationFees"
+                        @input="filterIntInput"
+                      />
+                    </div>
+                    <div class="grid gap-1">
+                      <Label class="text-xs text-muted-foreground"
+                        >Medical expenses (cap 10,000)</Label
+                      >
+                      <Input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        v-model.number="relief.medicalExpenses"
+                        @input="filterIntInput"
+                      />
+                    </div>
+                    <div class="grid gap-1">
+                      <Label class="text-xs text-muted-foreground">Lifestyle (cap 2,500)</Label>
+                      <Input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        v-model.number="relief.lifestyle"
+                        @input="filterIntInput"
+                      />
+                    </div>
+                    <div class="grid gap-1">
+                      <Label class="text-xs text-muted-foreground"
+                        >Sports/lifestyle add-on (cap 1,000)</Label
+                      >
+                      <Input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        v-model.number="relief.lifestyleSports"
+                        @input="filterIntInput"
+                      />
+                    </div>
+                    <div class="grid gap-1">
+                      <Label class="text-xs text-muted-foreground"
+                        >Child care fees (cap 3,000)</Label
+                      >
+                      <Input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        v-model.number="relief.childcareFees"
+                        @input="filterIntInput"
+                      />
+                    </div>
+                    <div class="grid gap-1">
+                      <Label class="text-xs text-muted-foreground"
+                        >PRS / Deferred annuity (cap 3,000)</Label
+                      >
+                      <Input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        v-model.number="relief.prsprs"
+                        @input="filterIntInput"
+                      />
+                    </div>
+                    <div class="grid gap-1">
+                      <Label class="text-xs text-muted-foreground"
+                        >Education/medical insurance (cap 3,000)</Label
+                      >
+                      <Input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        v-model.number="relief.insuranceMedical"
+                        @input="filterIntInput"
+                      />
+                    </div>
+                    <div class="grid gap-1">
+                      <Label class="text-xs text-muted-foreground"
+                        >SSPN net deposit (cap 8,000)</Label
+                      >
+                      <Input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        v-model.number="relief.sspn"
+                        @input="filterIntInput"
+                      />
+                    </div>
+                    <div class="grid gap-1">
+                      <Label class="text-xs text-muted-foreground"
+                        >EV charging facilities (cap 2,500)</Label
+                      >
+                      <Input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        v-model.number="relief.evCharging"
+                        @input="filterIntInput"
+                      />
+                    </div>
+                    <div class="grid gap-1 sm:col-span-2">
+                      <Label class="text-xs text-muted-foreground"
+                        >Life insurance (life portion, cap 3,000)</Label
+                      >
+                      <Input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        v-model.number="relief.lifeInsurance"
+                        @input="filterIntInput"
+                      />
+                    </div>
+                  </div>
+                  <div class="mt-2 text-xs">
+                    Additional reliefs total: {{ additionalReliefsSum.toLocaleString('en-MY') }}
+                  </div>
+                </details>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -258,6 +541,31 @@ async function sharePlan() {
                 <div class="flex items-center justify-between">
                   <span>EIS ({{ toPct(form.eisRate) }})</span>
                   <span>-{{ formatMYR(eis) }}</span>
+                </div>
+                <div class="flex items-center justify-between" v-if="form.includeIncomeTax">
+                  <span
+                    >Income tax (estimated)
+                    <span class="text-xs text-muted-foreground"
+                      >({{ effectiveTaxPct.toFixed(2) }}% of gross)</span
+                    >
+                  </span>
+                  <span>-{{ formatMYR(monthlyIncomeTax) }}</span>
+                </div>
+                <div class="pt-1 text-xs" v-if="form.includeIncomeTax">
+                  <div class="flex items-center justify-between">
+                    <span>Annual chargeable (est.)</span>
+                    <span>{{ formatMYR(annualChargeable) }}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span>Annual tax (est.)</span>
+                    <span>{{ formatMYR(annualTax) }}</span>
+                  </div>
+                  <div
+                    v-if="form.applyRebate && annualChargeable <= 35000"
+                    class="mt-1 text-[11px] text-emerald-300"
+                  >
+                    Resident rebate applied (up to RM400) when annual chargeable ≤ RM35,000.
+                  </div>
                 </div>
               </div>
               <Separator class="my-2" />
