@@ -366,7 +366,7 @@ async function sharePlan() {
               <div class="text-xs text-emerald-300 truncate">
                 Needs ({{ chosenFormula.needs }}%)
               </div>
-              <div class="mt-1 text-sm sm:text-lg font-medium text-emerald-200 truncate">
+              <div class="mt-1 text-sm sm:text-sm font-medium text-emerald-200 truncate">
                 {{ formatMYR(allocations.needsAmount) }}
               </div>
             </CardContent>
@@ -374,7 +374,7 @@ async function sharePlan() {
           <Card class="bg-amber-500/10 border-amber-500/40 w-full max-h-[90px] min-w-0">
             <CardContent class="px-2">
               <div class="text-xs text-amber-300 truncate">Wants ({{ chosenFormula.wants }}%)</div>
-              <div class="mt-1 text-sm sm:text-lg font-medium text-amber-200 truncate">
+              <div class="mt-1 text-sm sm:text-sm font-medium text-amber-200 truncate">
                 {{ formatMYR(allocations.wantsAmount) }}
               </div>
             </CardContent>
@@ -384,7 +384,7 @@ async function sharePlan() {
               <div class="text-xs text-sky-300 truncate">
                 Savings ({{ chosenFormula.savings }}%)
               </div>
-              <div class="mt-1 text-sm sm:text-lg font-medium text-sky-200 truncate">
+              <div class="mt-1 text-sm sm:text-sm font-medium text-sky-200 truncate">
                 {{ formatMYR(allocations.savingsAmount) }}
               </div>
             </CardContent>
