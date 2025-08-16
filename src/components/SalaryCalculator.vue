@@ -300,35 +300,27 @@ async function sharePlan() {
       <CardContent>
         <p class="text-sm text-muted-foreground">Based on your necessities and net income</p>
 
-        <div
-          class="mt-3 flex gap-3 overflow-x-auto snap-x snap-mandatory sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible"
-        >
-          <Card
-            class="bg-emerald-500/10 border-emerald-500/40 min-w-[70px] max-h-[90px] snap-center sm:min-w-0"
-          >
+        <div class="mt-3 grid grid-cols-3 gap-2">
+          <Card class="bg-emerald-500/10 border-emerald-500/40 w-full max-h-[90px] min-w-0">
             <CardContent class="px-2">
-              <div class="text-xs text-emerald-300">Needs ({{ chosenFormula.needs }}%)</div>
-              <div class="mt-1 text-base sm:text-lg font-semibold text-emerald-200">
+              <div class="text-xs text-emerald-300 truncate">Needs ({{ chosenFormula.needs }}%)</div>
+              <div class="mt-1 text-sm sm:text-lg font-medium text-emerald-200 truncate">
                 {{ formatMYR(allocations.needsAmount) }}
               </div>
             </CardContent>
           </Card>
-          <Card
-            class="bg-amber-500/10 border-amber-500/40 min-w-[70px] max-h-[90px] snap-center sm:min-w-0"
-          >
+          <Card class="bg-amber-500/10 border-amber-500/40 w-full max-h-[90px] min-w-0">
             <CardContent class="px-2">
-              <div class="text-xs text-amber-300">Wants ({{ chosenFormula.wants }}%)</div>
-              <div class="mt-1 text-base sm:text-lg font-semibold text-amber-200">
+              <div class="text-xs text-amber-300 truncate">Wants ({{ chosenFormula.wants }}%)</div>
+              <div class="mt-1 text-sm sm:text-lg font-medium text-amber-200 truncate">
                 {{ formatMYR(allocations.wantsAmount) }}
               </div>
             </CardContent>
           </Card>
-          <Card
-            class="bg-sky-500/10 border-sky-500/40 min-w-[70px] max-h-[90px] snap-center sm:min-w-0"
-          >
+          <Card class="bg-sky-500/10 border-sky-500/40 w-full max-h-[90px] min-w-0">
             <CardContent class="px-2">
-              <div class="text-xs text-sky-300">Savings ({{ chosenFormula.savings }}%)</div>
-              <div class="mt-1 text-base sm:text-lg font-semibold text-sky-200">
+              <div class="text-xs text-sky-300 truncate">Savings ({{ chosenFormula.savings }}%)</div>
+              <div class="mt-1 text-sm sm:text-lg font-medium text-sky-200 truncate">
                 {{ formatMYR(allocations.savingsAmount) }}
               </div>
             </CardContent>
